@@ -1,0 +1,1 @@
+# automatic anki card creator
