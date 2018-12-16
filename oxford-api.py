@@ -17,7 +17,7 @@ class OxfordAPI:
             return None
         resp = requests.get(self.base_url + "/entries/{lang}/{word}".format(lang=self.language, word=w), headers = self.headers)
         if resp.status_code != 200:
-            return 200
+            return None
         try:
             return resp.json()
         except:
