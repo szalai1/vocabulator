@@ -31,8 +31,16 @@ class OxfordAPI:
             return resp.json()["results"][0]["lexicalEntries"][0]["inflectionOf"][0]["id"]
         except:
             return None
-
-
+        
+    def getSynonymsBySenseID(self, w, senseID):
+        resp = requests.get(self.base_url + "/entries/{lang}/{word}/synonyms".format(lang=self.language, word=w), headers = self.header)
+        results = [] 
+        for i in resp.json()["lexicalEntries"]["entries"]["senses"]:
+            if i["id"] == senseID:
+                for j in i["synonyms"]:
+                    results.append(j["text"])
+                return results 
+            
 def main():
     oxfordAPI = OxfordAPI()
     for w in oxfordAPI.getWord(sys.argv[1])["results"][0]["lexicalEntries"]:
@@ -41,6 +49,13 @@ def main():
             for sense in entry["senses"]:
                 for d in sense["definitions"]:
                     print "\t"+d
+                for thLink in sense.get("thesaurusLinks", []):
+                    for syn in getSynonymsBySenseID(w["text"], thLink["sense_id"]):
+                        print syn
+                for example in sense["examples"]:
+                    print "\t\t-" + example["text"]
+                for subsense in sense["subsenses"]:
+                    print "\t\tSUBSENCE"
         print ""
     
 main()
