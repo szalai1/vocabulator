@@ -33,29 +33,54 @@ class OxfordAPI:
             return None
         
     def getSynonymsBySenseID(self, w, senseID):
-        resp = requests.get(self.base_url + "/entries/{lang}/{word}/synonyms".format(lang=self.language, word=w), headers = self.header)
+        resp = requests.get(self.base_url + "/entries/{lang}/{word}/synonyms".format(lang=self.language, word=w), headers = self.headers)
         results = [] 
-        for i in resp.json()["lexicalEntries"]["entries"]["senses"]:
-            if i["id"] == senseID:
-                for j in i["synonyms"]:
-                    results.append(j["text"])
-                return results 
+        js = {}
+        try: 
+            js = resp.json()
+        except :
+            return [] 
+        for r in js["results"]:
+            for l in r["lexicalEntries"]:
+                for e in l["entries"]:
+                    for s in e["senses"]:
+                        if s["id"] == senseID:
+                            for j in s["synonyms"]:
+                                results.append(j["text"])
+        return results
             
 def main():
     oxfordAPI = OxfordAPI()
-    for w in oxfordAPI.getWord(sys.argv[1])["results"][0]["lexicalEntries"]:
+    headWord = oxfordAPI.getHeadword(sys.argv[1])
+    if headWord is None:
+        return
+    wordData = oxfordAPI.getWord(headWord)
+    if wordData is None: 
+        return 
+    for w in wordData["results"][0]["lexicalEntries"]:
         print w["lexicalCategory"]
         for entry in w["entries"]:
             for sense in entry["senses"]:
                 for d in sense["definitions"]:
-                    print "\t"+d
+                    print "\t* "+d
+                syns = []
                 for thLink in sense.get("thesaurusLinks", []):
-                    for syn in getSynonymsBySenseID(w["text"], thLink["sense_id"]):
-                        print syn
-                for example in sense["examples"]:
+                    syns += oxfordAPI.getSynonymsBySenseID(thLink["entry_id"], thLink["sense_id"])
+                if len(syns) > 0:
+                    print "\t\t[synonyms] " + ", ".join(syns)
+                for example in sense.get("examples", []):
                     print "\t\t-" + example["text"]
-                for subsense in sense["subsenses"]:
-                    print "\t\tSUBSENCE"
+                for subsense in sense.get("subsenses", []):
+                    print "\t\t subsense:" + json.dumps(subsense)
+                    for d in subsense["definitions"]:
+                        print "\t\t ** "+d
+                    for thLink in subsense.get("thesaurusLinks", []):
+                        syns = oxfordAPI.getSynonymsBySenseID(thLink["entry_id"], thLink["sense_id"])
+                        if len(syns) > 0:
+                            print "\t\t[synonyms] " + ", ".join(syns)
+                    for example in subsense.get("examples", []):
+                        print "\t\t-" + example["text"]
+     
         print ""
     
 main()
