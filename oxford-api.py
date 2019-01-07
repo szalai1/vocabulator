@@ -48,6 +48,42 @@ class OxfordAPI:
                             for j in s["synonyms"]:
                                 results.append(j["text"])
         return results
+    
+class Anki:
+    def __init__(self):
+        self.url = "http://localhost:8765"
+    
+    def createDefinitionCard(self, deckName, front, back, audio=None):
+        audio = {
+            "url": audio,
+            "finame": audio.split("/")[-1],
+            "fields": [
+                "back"
+            ]
+        }
+        req = {
+            "action": "addNote",
+            "version": 6,
+            "params": {
+                "note": {
+                    "deckName": deckName,
+                    "modelName": "Basic",
+                    "fields": {
+                        "Front": front, 
+                        "Back": back, 
+                    },
+                    "options": {
+                        "allowDuplicate": False
+                    },
+                    "tags": [],
+                    "audio": audio,
+                },
+            }
+        }
+        resp = requests.post(self.url, json.dumps(req))
+        print resp.json()
+
+
             
 def main():
     oxfordAPI = OxfordAPI()
@@ -71,7 +107,6 @@ def main():
                 for example in sense.get("examples", []):
                     print "\t\t-" + example["text"]
                 for subsense in sense.get("subsenses", []):
-                    print "\t\t subsense:" + json.dumps(subsense)
                     for d in subsense["definitions"]:
                         print "\t\t ** "+d
                     for thLink in subsense.get("thesaurusLinks", []):
