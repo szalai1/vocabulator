@@ -40,7 +40,7 @@ def createBasicNote(deckName, front, back, audio=None):
     print resp.json()
 
 print sys.argv
-#createDeck(sys.argv[1])
+
 audio = {
     "url": "http://audio.oxforddictionaries.com/en/mp3/ace_1_gb_1_abbr.mp3",
     "filename": "Kace_1_gb_1_abbr.mp3",
@@ -48,4 +48,4 @@ audio = {
         "Front"
     ]
 }
-createBasicNote(sys.argv[1], sys.argv[2], sys.argv[3], audio)
+createBasicNote(sys.argv[1], sys.argv[2], sys.argv[3])

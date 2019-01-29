@@ -54,13 +54,6 @@ class Anki:
         self.url = "http://localhost:8765"
     
     def createDefinitionCard(self, deckName, front, back, audio=None):
-        audio = {
-            "url": audio,
-            "finame": audio.split("/")[-1],
-            "fields": [
-                "back"
-            ]
-        }
         req = {
             "action": "addNote",
             "version": 6,
@@ -81,11 +74,24 @@ class Anki:
             }
         }
         resp = requests.post(self.url, json.dumps(req))
-        print resp.json()
 
 
             
-def main():
+def getWordCards():
+    card_template = u"""<strong>{word}</strong><br>
+    <p align="left">
+<b> Definition ({category}) </b>: {definition}<br>
+<b>Synonyms:</b> <i>{synonyms}</i><br>
+Examples:<br>
+</p>
+<ul align="left">
+{examples}
+</ul>
+"""
+    subsense_template = u"""
+<b> {subsense_def}</b>
+<ul align="left">{subsense_examples}</ul>
+"""
     oxfordAPI = OxfordAPI()
     headWord = oxfordAPI.getHeadword(sys.argv[1])
     if headWord is None:
@@ -94,29 +100,32 @@ def main():
     if wordData is None: 
         return 
     for w in wordData["results"][0]["lexicalEntries"]:
-        print w["lexicalCategory"]
+        category = w["lexicalCategory"]
         for entry in w["entries"]:
             for sense in entry["senses"]:
-                for d in sense["definitions"]:
-                    print "\t* "+d
-                syns = []
+                definition = "\n>> ".join(sense["definitions"])
+                syns = [] 
+                examples = ""
                 for thLink in sense.get("thesaurusLinks", []):
                     syns += oxfordAPI.getSynonymsBySenseID(thLink["entry_id"], thLink["sense_id"])
-                if len(syns) > 0:
-                    print "\t\t[synonyms] " + ", ".join(syns)
                 for example in sense.get("examples", []):
-                    print "\t\t-" + example["text"]
+                    examples += u'<li>' + example["text"] + u'</li>'
+                subsense_text = ""
                 for subsense in sense.get("subsenses", []):
-                    for d in subsense["definitions"]:
-                        print "\t\t ** "+d
+                    sub_def = u', '.join(subsense["definitions"])
+                    sub_examples = u'<li>'.join(map(lambda ex: ex['text']+"</li>", subsense.get("examples", [])))
                     for thLink in subsense.get("thesaurusLinks", []):
-                        syns = oxfordAPI.getSynonymsBySenseID(thLink["entry_id"], thLink["sense_id"])
-                        if len(syns) > 0:
-                            print "\t\t[synonyms] " + ", ".join(syns)
-                    for example in subsense.get("examples", []):
-                        print "\t\t-" + example["text"]
-     
-        print ""
+                        syns+=oxfordAPI.getSynonymsBySenseID(thLink["entry_id"], thLink["sense_id"])
+                    subsense_text +=  subsense_template.format(subsense_def=sub_def,subsense_examples=sub_examples)
+                syns = ", ".join(syns)
+                card_text = card_template.format(word=headWord, category=category,definition=definition, synonyms=syns,examples=examples)
+                if subsense_text != "":
+                    card_text += subsense_text
+                yield card_text
+    
+def main():
+    anki = Anki()
+    for wordCard in getWordCards():
+        anki.createDefinitionCard("alma", wordCard, wordCard) 
     
 main()
-#getHeadword(sys.argv[1])
