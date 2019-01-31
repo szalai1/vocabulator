@@ -1,4 +1,5 @@
-import  requests
+import requests
+import argparse
 import json
 import sys 
 
@@ -49,9 +50,9 @@ class OxfordAPI:
                                 results.append(j["text"])
         return results
     
-class Anki:
-    def __init__(self):
-        self.url = "http://localhost:8765"
+class AnkiAPI:
+    def __init__(self, host):
+        self.url = host
     
     def createDefinitionCard(self, deckName, front, back, audio=None):
         req = {
@@ -77,7 +78,7 @@ class Anki:
 
 
             
-def getWordCards():
+def getWordCards(word):
     card_template = u"""<strong>{word}</strong><br>
     <p align="left">
 <b> Definition ({category}) </b>: {definition}<br>
@@ -93,12 +94,12 @@ Examples:<br>
 <ul align="left">{subsense_examples}</ul>
 """
     oxfordAPI = OxfordAPI()
-    headWord = oxfordAPI.getHeadword(sys.argv[1])
+    headWord = oxfordAPI.getHeadword(word)
     if headWord is None:
-        return
+       raise Exception("no such word") 
     wordData = oxfordAPI.getWord(headWord)
     if wordData is None: 
-        return 
+       raise Exception("no response") 
     for w in wordData["results"][0]["lexicalEntries"]:
         category = w["lexicalCategory"]
         for entry in w["entries"]:
@@ -122,10 +123,28 @@ Examples:<br>
                 if subsense_text != "":
                     card_text += subsense_text
                 yield card_text
-    
+   
+def responseOK():
+    resp = raw_input("do you want to add this card to your deck? (y or n): ")
+    if resp[0] == 'y' or resp[0] == 'Y':
+        return True
+    return False
+
 def main():
-    anki = Anki()
-    for wordCard in getWordCards():
-        anki.createDefinitionCard("alma", wordCard, wordCard) 
+    argp = argparse.ArgumentParser(description="vocabulator")
+    argp.add_argument('word', metavar='1', type=str, help='the word')
+    argp.add_argument('--deck', default="words")
+    argp.add_argument('--host', default="http://localhost:8765")
+    args = argp.parse_args()
+    anki = AnkiAPI(args.host)
+    try:
+        for wordCard in getWordCards(args.word):
+            print wordCard
+            if responseOK():
+                anki.createDefinitionCard(args.deck, wordCard, wordCard) 
+                print "card has been added"
+    except Exception as e:
+        print e
+
     
 main()
