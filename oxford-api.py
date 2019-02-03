@@ -1,4 +1,5 @@
 import requests
+import re
 import argparse
 import json
 import sys 
@@ -54,17 +55,16 @@ class AnkiAPI:
     def __init__(self, host):
         self.url = host
     
-    def createDefinitionCard(self, deckName, front, back, audio=None):
+    def createDefinitionCard(self, deckName, front, audio=None):
         req = {
             "action": "addNote",
             "version": 6,
             "params": {
                 "note": {
                     "deckName": deckName,
-                    "modelName": "Basic",
+                    "modelName": "Cloze",
                     "fields": {
-                        "Front": front, 
-                        "Back": back, 
+                        "Text": front, 
                     },
                     "options": {
                         "allowDuplicate": False
@@ -75,6 +75,8 @@ class AnkiAPI:
             }
         }
         resp = requests.post(self.url, json.dumps(req))
+        if resp.status_code != 200 or resp.json()["error"] is not None:
+            raise Exception(resp.json()["error"])
 
 
             
@@ -130,6 +132,11 @@ def responseOK():
         return True
     return False
 
+def addCloze(text, word, n=1):
+    pattern = "\w*{word}\w*".format(word=word)
+    cloze = lambda s: "{{{{c{n}::{word}}}}}".format(n=n, word=word)
+    return re.sub(pattern, cloze, text)        
+
 def main():
     argp = argparse.ArgumentParser(description="vocabulator")
     argp.add_argument('word', metavar='1', type=str, help='the word')
@@ -139,9 +146,10 @@ def main():
     anki = AnkiAPI(args.host)
     try:
         for wordCard in getWordCards(args.word):
-            print wordCard
+            card = addCloze(wordCard, args.word)
+            print card 
             if responseOK():
-                anki.createDefinitionCard(args.deck, wordCard, wordCard) 
+                anki.createDefinitionCard(args.deck, card) 
                 print "card has been added"
     except Exception as e:
         print e
