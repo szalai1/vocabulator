@@ -144,9 +144,11 @@ def main():
     argp.add_argument('--host', default="http://localhost:8765")
     args = argp.parse_args()
     anki = AnkiAPI(args.host)
+    oxford = OxfordAPI()
     try:
         for wordCard in getWordCards(args.word):
-            card = addCloze(wordCard, args.word)
+            headW = oxford.getHeadword(args.word)
+            card = addCloze(wordCard, headW)
             print card 
             if responseOK():
                 anki.createDefinitionCard(args.deck, card) 
